@@ -1,71 +1,50 @@
 # Codex Desktop Rebuild
 
-Cross-platform Electron build for OpenAI Codex Desktop App.
+This branch is intended to be used together with the chat-tree-enabled Codex branch:
 
-## Supported Platforms
+- <https://github.com/Reekin/codex/tree/rebase/v0.116-chat-tree>
 
-| Platform | Architecture | Status |
-|----------|--------------|--------|
-| macOS    | x64, arm64   | ✅     |
-| Windows  | x64          | ✅     |
-| Linux    | x64, arm64   | ✅     |
+It contains a Windows-focused Codex Desktop adaptation for chat-tree workflows.
 
-## Build
+## What This Branch Includes
 
-```bash
-# Install dependencies
-npm install
+- A standalone sidecar application that displays the current conversation node graph and lets you switch branches from an external overlay UI.
+- Lightweight adjustments to the unpacked Codex Desktop code so the desktop app can cooperate with the sidecar workflow.
+- Branch-specific support files under `.codex/skills/`.
 
-# Build for current platform
-npm run build
+## Sidecar Overlay
 
-# Build for specific platform
-npm run build:mac-x64
-npm run build:mac-arm64
-npm run build:win-x64
-npm run build:linux-x64
-npm run build:linux-arm64
+The sidecar project lives in `codex-chat-tree-overlay/`.
 
-# Build all platforms
-npm run build:all
-```
+Its purpose is to:
 
-## Development
+- detect the focused Codex Desktop window,
+- dock a narrow floating panel beside it,
+- read the current session id from `%USERPROFILE%\CodexApp\cur-session-id`,
+- render the conversation chat tree,
+- switch the current node,
+- notify Codex Desktop to refresh after a branch switch.
 
-```bash
-npm run dev
-```
+This overlay is designed for the chat-tree behavior provided by the `rebase/v0.116-chat-tree` Codex branch linked above.
 
-## Project Structure
+## Desktop Adaptation
 
-```
-├── src/
-│   ├── .vite/build/     # Main process (Electron)
-│   └── webview/         # Renderer (Frontend)
-├── resources/
-│   ├── electron.icns    # App icon
-│   └── notification.wav # Sound
-├── scripts/
-│   └── patch-copyright.js
-├── forge.config.js      # Electron Forge config
-└── package.json
-```
+This branch also includes small edits to the unpacked desktop bundle so the rebuilt Codex Desktop app can work with the overlay flow.
 
-## CI/CD
+These edits are used to:
 
-GitHub Actions automatically builds on:
-- Push to `master`
-- Tag `v*` → Creates draft release
+- persist the active session id to `%USERPROFILE%\CodexApp\cur-session-id`,
+- react to `%USERPROFILE%\CodexApp\refresh`,
+- restore the active session after the app-server restart required by node switching.
 
-## Credits
+## Skills Directory
 
-**© OpenAI · Cometix Space**
+The `.codex/skills/` directory is part of this branch and should be committed.
 
-- [OpenAI Codex](https://github.com/openai/codex) - Original Codex CLI (Apache-2.0)
-- [Cometix Space](https://github.com/Haleclipse) - Cross-platform rebuild & [@cometix/codex](https://www.npmjs.com/package/@cometix/codex) binaries
-- [Electron Forge](https://www.electronforge.io/) - Build toolchain
+It is not temporary local tooling. It contains branch-specific instructions used to reapply and maintain the desktop adaptation logic.
 
-## License
+## Notes
 
-This project rebuilds the Codex Desktop app for cross-platform distribution.
-Original Codex CLI by OpenAI is licensed under Apache-2.0.
+- This branch is not a generic upstream rebuild snapshot.
+- It is a working integration branch for chat-tree visualization and control.
+- If you use this branch without the matching Codex branch, the overlay and refresh workflow will be incomplete.
