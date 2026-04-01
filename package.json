@@ -71,5 +71,8 @@
   "codexBuildFlavor": "prod",
   "codexBuildNumber": "1272",
   "codexSparkleFeedUrl": "https://persistent.oaistatic.com/codex-app-prod/appcast.xml",
-  "codexSparklePublicKey": "rhcBvttuqDFriyNqwTQJR3L4UT1WjIK4QxtwtwusVic="
+  "codexSparklePublicKey": "rhcBvttuqDFriyNqwTQJR3L4UT1WjIK4QxtwtwusVic=",
+  "codexWindowsUpdateUrl": "https://persistent.oaistatic.com/codex-app-prod/windows-update.json",
+  "codexWindowsPackageIdentity": "OpenAI.Codex",
+  "codexWindowsPackagePublisher": "CN=50BDFD77-8903-4850-9FFE-6E8522F64D5B"
 }

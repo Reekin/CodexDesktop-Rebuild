@@ -1,0 +1,219 @@
+:root {
+  color: #edf2ff;
+  background: transparent;
+  font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: transparent;
+}
+
+body {
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: 14px 12px 10px;
+  gap: 12px;
+  border-left: 1px solid rgba(166, 184, 255, 0.18);
+  background:
+    radial-gradient(circle at top, rgba(93, 126, 255, 0.24), transparent 34%),
+    linear-gradient(180deg, rgba(10, 14, 24, 0.95), rgba(6, 9, 17, 0.98));
+  backdrop-filter: blur(20px);
+}
+
+.app-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: rgba(203, 214, 255, 0.72);
+}
+
+.app-header h1 {
+  margin: 2px 0 0;
+  font-size: 20px;
+  line-height: 1.1;
+  font-weight: 600;
+}
+
+.ghost-button {
+  border: 1px solid rgba(166, 184, 255, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.02);
+  color: #edf2ff;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.ghost-button:hover {
+  background: rgba(117, 141, 255, 0.12);
+}
+
+.status-card,
+.graph-card {
+  border: 1px solid rgba(166, 184, 255, 0.12);
+  border-radius: 18px;
+  background: rgba(17, 23, 37, 0.76);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.status-card {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.status-label {
+  color: rgba(203, 214, 255, 0.72);
+}
+
+.status-value {
+  font-weight: 600;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 11px;
+  background: rgba(255, 174, 0, 0.14);
+  color: #ffd98e;
+}
+
+.status-badge.is-ok {
+  background: rgba(59, 194, 123, 0.16);
+  color: #a4f0c0;
+}
+
+.status-message,
+.error-message {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.status-message {
+  color: rgba(228, 235, 255, 0.82);
+}
+
+.error-message {
+  color: #ffb0b0;
+}
+
+.mono {
+  font-family: "Cascadia Mono", Consolas, monospace;
+}
+
+.graph-card {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 0;
+}
+
+.graph-shell {
+  position: relative;
+  margin: 0 auto;
+}
+
+.graph-svg {
+  display: block;
+}
+
+.graph-connector {
+  fill: none;
+  stroke: rgba(214, 223, 255, 0.22);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.graph-node {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.graph-node-dot {
+  display: block;
+  width: 14px;
+  height: 14px;
+  margin: 4px;
+  border-radius: 999px;
+  border: 3px solid rgba(236, 240, 255, 0.88);
+  background: rgba(255, 255, 255, 0.06);
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.graph-node:hover .graph-node-dot {
+  transform: scale(1.05);
+}
+
+.graph-node.is-current .graph-node-dot {
+  border-color: #6fa5ff;
+  box-shadow: 0 0 0 4px rgba(73, 127, 255, 0.22);
+  background: #b1d2ff;
+}
+
+.graph-node.is-switching .graph-node-dot {
+  box-shadow: 0 0 0 6px rgba(255, 205, 118, 0.22);
+}
+
+.empty-state {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  min-height: 180px;
+  color: rgba(203, 214, 255, 0.72);
+  font-size: 12px;
+}
+
+.app-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: rgba(203, 214, 255, 0.62);
+  font-size: 11px;
+  line-height: 1.4;
+}
