@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex Refresh Patch"
+  short_description: "Reapply refresh and session restore bundle patch"
+  default_prompt: "Use $codex-desktop-refresh-restore-patch to reapply the Windows unpacked-bundle refresh and session-restore patch."

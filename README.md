@@ -10,7 +10,6 @@ It contains a Windows-focused Codex Desktop adaptation for chat-tree workflows.
 
 - A standalone sidecar application that displays the current conversation node graph and lets you switch branches from an external overlay UI.
 - Lightweight adjustments to the unpacked Codex Desktop code so the desktop app can cooperate with the sidecar workflow.
-- Branch-specific support files under `.codex/skills/`.
 
 ## Sidecar Overlay
 
@@ -36,12 +35,6 @@ These edits are used to:
 - persist the active session id to `%USERPROFILE%\CodexApp\cur-session-id`,
 - react to `%USERPROFILE%\CodexApp\refresh`,
 - restore the active session after the app-server restart required by node switching.
-
-## Skills Directory
-
-The `.codex/skills/` directory is part of this branch and should be committed.
-
-It is not temporary local tooling. It contains branch-specific instructions used to reapply and maintain the desktop adaptation logic.
 
 ## Notes
 
