@@ -9,6 +9,8 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStdin, Command};
 use tokio::sync::{oneshot, Mutex};
 use tokio::time::timeout;
+#[cfg(target_os = "windows")]
+use windows::Win32::System::Threading::CREATE_NO_WINDOW;
 
 use crate::model::{ThreadChatTree, ThreadChatTreeNode};
 
@@ -223,6 +225,10 @@ fn build_codex_command(codex_home: &Path) -> Command {
     command.arg("app-server");
     command.current_dir(std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
     command.env("CODEX_HOME", codex_home);
+    #[cfg(target_os = "windows")]
+    {
+        command.creation_flags(CREATE_NO_WINDOW.0);
+    }
     if let Some(path_env) = build_codex_path_env() {
         command.env("PATH", path_env);
     }

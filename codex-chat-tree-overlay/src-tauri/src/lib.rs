@@ -7,14 +7,22 @@ use model::{OverlaySnapshot, SetCurrentNodeResult, WindowRect};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, Position, Size, State, WebviewWindow};
+use tauri::menu::{Menu, MenuItem};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::{
+    AppHandle, Manager, PhysicalPosition, PhysicalSize, Position, Size, State, WebviewWindow,
+    WindowEvent,
+};
 use tokio::sync::Mutex;
 
 const OVERLAY_WINDOW_WIDTH: i32 = 232;
 const POLL_INTERVAL_MS: u64 = 900;
 const OVERLAY_TITLE: &str = "Codex Chat Tree Overlay";
+const TRAY_MENU_SHOW_ID: &str = "tray_show";
+const TRAY_MENU_QUIT_ID: &str = "tray_quit";
 
 #[derive(Default)]
 struct RuntimeState {
@@ -22,6 +30,11 @@ struct RuntimeState {
     helper: Mutex<Option<Arc<CodexAppServer>>>,
     attached_thread_id: Mutex<Option<String>>,
     last_target_rect: Mutex<Option<WindowRect>>,
+}
+
+#[derive(Default)]
+struct AppLifecycleState {
+    is_quitting: AtomicBool,
 }
 
 #[tauri::command]
@@ -88,12 +101,55 @@ async fn set_current_node(
 pub fn run() {
     tauri::Builder::default()
         .manage(RuntimeState::default())
+        .manage(AppLifecycleState::default())
         .setup(|app| {
+            setup_tray(app)?;
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 let _ = background_watch_loop(app_handle).await;
             });
             Ok(())
+        })
+        .on_menu_event(|app, event| match event.id().as_ref() {
+            TRAY_MENU_SHOW_ID => {
+                let _ = show_overlay_window(app);
+            }
+            TRAY_MENU_QUIT_ID => {
+                if let Some(state) = app.try_state::<AppLifecycleState>() {
+                    state.is_quitting.store(true, Ordering::SeqCst);
+                }
+                app.exit(0);
+            }
+            _ => {}
+        })
+        .on_tray_icon_event(|app, event| match event {
+            TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            }
+            | TrayIconEvent::DoubleClick {
+                button: MouseButton::Left,
+                ..
+            } => {
+                let _ = show_overlay_window(app);
+            }
+            _ => {}
+        })
+        .on_window_event(|window, event| {
+            if window.label() != "main" {
+                return;
+            }
+            let Some(state) = window.try_state::<AppLifecycleState>() else {
+                return;
+            };
+            if state.is_quitting.load(Ordering::SeqCst) {
+                return;
+            }
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+            }
         })
         .invoke_handler(tauri::generate_handler![
             get_overlay_snapshot,
@@ -294,4 +350,36 @@ fn current_overlay_rect(window: Option<&WebviewWindow>) -> Result<Option<WindowR
         position.x + size.width as i32,
         position.y + size.height as i32,
     )))
+}
+
+fn setup_tray(app: &tauri::App) -> Result<(), String> {
+    let show_item = MenuItem::with_id(app, TRAY_MENU_SHOW_ID, "Show Overlay", true, None::<&str>)
+        .map_err(|err| err.to_string())?;
+    let quit_item =
+        MenuItem::with_id(app, TRAY_MENU_QUIT_ID, "Quit", true, None::<&str>)
+            .map_err(|err| err.to_string())?;
+    let menu =
+        Menu::with_items(app, &[&show_item, &quit_item]).map_err(|err| err.to_string())?;
+    let icon = app
+        .default_window_icon()
+        .cloned()
+        .ok_or_else(|| "default tray icon is missing".to_string())?;
+
+    TrayIconBuilder::with_id("main")
+        .icon(icon)
+        .tooltip("Codex Chat Tree Overlay")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .build(app)
+        .map_err(|err| err.to_string())?;
+    Ok(())
+}
+
+fn show_overlay_window(app: &AppHandle) -> Result<(), String> {
+    let Some(window) = app.get_webview_window("main") else {
+        return Err("main overlay window is missing".to_string());
+    };
+    let _ = window.unminimize();
+    window.show().map_err(|err| err.to_string())?;
+    window.set_focus().map_err(|err| err.to_string())
 }
