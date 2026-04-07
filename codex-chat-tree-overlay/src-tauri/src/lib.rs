@@ -29,6 +29,7 @@ struct RuntimeState {
     snapshot: Mutex<OverlaySnapshot>,
     helper: Mutex<Option<Arc<CodexAppServer>>>,
     attached_thread_id: Mutex<Option<String>>,
+    current_node_override: Mutex<Option<(String, String)>>,
     last_target_rect: Mutex<Option<WindowRect>>,
 }
 
@@ -47,6 +48,7 @@ async fn refresh_chat_tree(
     app: AppHandle,
     state: State<'_, RuntimeState>,
 ) -> Result<OverlaySnapshot, String> {
+    reset_helper_state(&state).await;
     sync_runtime(&app, &state).await?;
     Ok(state.snapshot.lock().await.clone())
 }
@@ -78,9 +80,15 @@ async fn set_current_node(
         snapshot.status_message = "Switching branch and refreshing Codex...".to_string();
     }
 
-    let helper = ensure_helper(&state).await?;
-    helper.resume_thread(&thread_id).await?;
-    let current_node_id = helper.set_current_node(&thread_id, &next_node_id).await?;
+    let current_node_id = match set_current_node_once(&state, &thread_id, &next_node_id, true).await
+    {
+        Ok(current_node_id) => current_node_id,
+        Err(error) if should_refresh_helper_for_error(&error) => {
+            set_current_node_once(&state, &thread_id, &next_node_id, true).await?
+        }
+        Err(error) => return Err(error),
+    };
+    *state.current_node_override.lock().await = Some((thread_id.clone(), current_node_id.clone()));
     trigger_refresh_file()?;
 
     {
@@ -230,6 +238,8 @@ async fn update_session_tree(
         snapshot.chat_tree = None;
         snapshot.status_message = "Waiting for Codex Desktop session focus...".to_string();
         snapshot.last_error = None;
+        *state.attached_thread_id.lock().await = None;
+        *state.current_node_override.lock().await = None;
         return Ok(());
     };
     drop(snapshot);
@@ -242,7 +252,8 @@ async fn update_session_tree(
         snapshot.chat_tree = None;
         snapshot.last_error = Some("Helper Codex app-server is not running.".to_string());
         snapshot.status_message = "Restarting helper app-server...".to_string();
-        *state.helper.lock().await = None;
+        drop(snapshot);
+        reset_helper_state(state).await;
         return Ok(());
     }
 
@@ -255,7 +266,8 @@ async fn update_session_tree(
         *state.attached_thread_id.lock().await = Some(thread_id.clone());
     }
 
-    let chat_tree = helper.read_chat_tree(&thread_id).await?;
+    let mut chat_tree = helper.read_chat_tree(&thread_id).await?;
+    apply_current_node_override(state, &thread_id, &mut chat_tree).await;
     let mut snapshot = state.snapshot.lock().await;
     snapshot.helper_connected = true;
     snapshot.chat_tree = Some(chat_tree.clone());
@@ -279,6 +291,74 @@ async fn ensure_helper(state: &RuntimeState) -> Result<Arc<CodexAppServer>, Stri
     let helper = CodexAppServer::spawn(&resolve_codex_home()).await?;
     *state.helper.lock().await = Some(helper.clone());
     Ok(helper)
+}
+
+async fn ensure_fresh_helper(state: &RuntimeState) -> Result<Arc<CodexAppServer>, String> {
+    reset_helper_state(state).await;
+    ensure_helper(state).await
+}
+
+async fn reset_helper_state(state: &RuntimeState) {
+    let existing = {
+        let mut helper_slot = state.helper.lock().await;
+        helper_slot.take()
+    };
+    if let Some(existing) = existing {
+        let _ = existing.shutdown().await;
+    }
+    *state.attached_thread_id.lock().await = None;
+    *state.current_node_override.lock().await = None;
+}
+
+async fn apply_current_node_override(
+    state: &RuntimeState,
+    thread_id: &str,
+    chat_tree: &mut model::ThreadChatTree,
+) {
+    let mut override_slot = state.current_node_override.lock().await;
+    let Some((override_thread_id, override_node_id)) = override_slot.as_ref() else {
+        return;
+    };
+
+    if override_thread_id != thread_id {
+        *override_slot = None;
+        return;
+    }
+
+    if chat_tree
+        .nodes
+        .iter()
+        .any(|node| node.node_id == *override_node_id)
+    {
+        chat_tree.current_node_id = Some(override_node_id.clone());
+        return;
+    }
+
+    *override_slot = None;
+}
+
+async fn set_current_node_once(
+    state: &RuntimeState,
+    thread_id: &str,
+    node_id: &str,
+    use_fresh_helper: bool,
+) -> Result<String, String> {
+    let helper = if use_fresh_helper {
+        ensure_fresh_helper(state).await?
+    } else {
+        ensure_helper(state).await?
+    };
+    helper.resume_thread(thread_id).await?;
+    *state.attached_thread_id.lock().await = Some(thread_id.to_string());
+    helper.set_current_node(thread_id, node_id).await
+}
+
+fn should_refresh_helper_for_error(error: &str) -> bool {
+    error.contains("unknown chat tree node id")
+        || error.contains("unknown node")
+        || error.contains("thread not loaded:")
+        || error.contains("request canceled")
+        || error.contains("request timed out")
 }
 
 fn resolve_codex_home() -> PathBuf {
@@ -330,7 +410,10 @@ fn position_overlay_window(window: &WebviewWindow, target_rect: WindowRect) -> R
     let y = target_rect.top.min(max_top).max(work_area.top);
 
     window
-        .set_size(Size::Physical(PhysicalSize::new(width as u32, height as u32)))
+        .set_size(Size::Physical(PhysicalSize::new(
+            width as u32,
+            height as u32,
+        )))
         .map_err(|err| err.to_string())?;
     window
         .set_position(Position::Physical(PhysicalPosition::new(x, y)))
@@ -355,11 +438,9 @@ fn current_overlay_rect(window: Option<&WebviewWindow>) -> Result<Option<WindowR
 fn setup_tray(app: &tauri::App) -> Result<(), String> {
     let show_item = MenuItem::with_id(app, TRAY_MENU_SHOW_ID, "Show Overlay", true, None::<&str>)
         .map_err(|err| err.to_string())?;
-    let quit_item =
-        MenuItem::with_id(app, TRAY_MENU_QUIT_ID, "Quit", true, None::<&str>)
-            .map_err(|err| err.to_string())?;
-    let menu =
-        Menu::with_items(app, &[&show_item, &quit_item]).map_err(|err| err.to_string())?;
+    let quit_item = MenuItem::with_id(app, TRAY_MENU_QUIT_ID, "Quit", true, None::<&str>)
+        .map_err(|err| err.to_string())?;
+    let menu = Menu::with_items(app, &[&show_item, &quit_item]).map_err(|err| err.to_string())?;
     let icon = app
         .default_window_icon()
         .cloned()

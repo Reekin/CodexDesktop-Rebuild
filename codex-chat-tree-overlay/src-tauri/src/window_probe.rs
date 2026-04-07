@@ -106,7 +106,12 @@ mod win {
         if unsafe { GetWindowRect(hwnd, &mut rect) }.is_err() {
             return None;
         }
-        Some(WindowRect::new(rect.left, rect.top, rect.right, rect.bottom))
+        Some(WindowRect::new(
+            rect.left,
+            rect.top,
+            rect.right,
+            rect.bottom,
+        ))
     }
 
     fn window_title(hwnd: HWND) -> String {

@@ -60,8 +60,8 @@ fn run_cli(args: &[String]) -> Result<(), String> {
             let codex_home = resolve_codex_home();
             let runtime = tokio::runtime::Runtime::new().map_err(|err| err.to_string())?;
             runtime.block_on(async move {
-                let helper = codex_chat_tree_overlay_lib::bridge::CodexAppServer::spawn(&codex_home)
-                    .await?;
+                let helper =
+                    codex_chat_tree_overlay_lib::bridge::CodexAppServer::spawn(&codex_home).await?;
                 helper.resume_thread(&thread_id).await?;
 
                 if args[0] == "chat-tree-dump" {

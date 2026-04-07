@@ -134,6 +134,15 @@ impl CodexAppServer {
         matches!(child.try_wait(), Ok(None))
     }
 
+    pub async fn shutdown(&self) -> Result<(), String> {
+        let mut child = self.child.lock().await;
+        match child.try_wait() {
+            Ok(Some(_)) => Ok(()),
+            Ok(None) => child.kill().await.map_err(|err| err.to_string()),
+            Err(err) => Err(err.to_string()),
+        }
+    }
+
     pub async fn resume_thread(&self, thread_id: &str) -> Result<(), String> {
         self.send_request("thread/resume", json!({ "threadId": thread_id }))
             .await
@@ -159,7 +168,11 @@ impl CodexAppServer {
             .await?;
         response
             .get("result")
-            .and_then(|value| value.get("currentNodeId").or_else(|| value.get("current_node_id")))
+            .and_then(|value| {
+                value
+                    .get("currentNodeId")
+                    .or_else(|| value.get("current_node_id"))
+            })
             .and_then(Value::as_str)
             .map(|value| value.to_string())
             .ok_or_else(|| "missing currentNodeId in set-current response".to_string())
@@ -206,10 +219,7 @@ fn parse_chat_tree(response: &Value) -> Result<ThreadChatTree, String> {
                     .or_else(|| entry.get("turn_id"))
                     .and_then(Value::as_str)
                     .map(|value| value.to_string()),
-                order: entry
-                    .get("order")
-                    .and_then(Value::as_u64)
-                    .unwrap_or(0) as u32,
+                order: entry.get("order").and_then(Value::as_u64).unwrap_or(0) as u32,
             })
         })
         .collect();
