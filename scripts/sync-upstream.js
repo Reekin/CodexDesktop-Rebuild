@@ -239,6 +239,7 @@ async function syncWin(winInfo) {
   for (const cmd of [
     `7zz x -y -o"${extractDir}" "${msixPath}"`,
     `7z x -y -o"${extractDir}" "${msixPath}"`,
+    `unzip -o "${msixPath}" -d "${extractDir}"`,
   ]) {
     try {
       execSync(cmd, { stdio: "pipe" });

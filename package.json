@@ -69,7 +69,7 @@
     "electron-liquid-glass": "1.1.1"
   },
   "codexBuildFlavor": "prod",
-  "codexBuildNumber": "1272",
+  "codexBuildNumber": "1858",
   "codexSparkleFeedUrl": "https://persistent.oaistatic.com/codex-app-prod/appcast.xml",
   "codexSparklePublicKey": "rhcBvttuqDFriyNqwTQJR3L4UT1WjIK4QxtwtwusVic=",
   "codexWindowsUpdateUrl": "https://persistent.oaistatic.com/codex-app-prod/windows-update.json",

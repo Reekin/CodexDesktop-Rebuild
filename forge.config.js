@@ -32,10 +32,21 @@ function syncVendorToLocal(platform, arch) {
   if (!vendorPath) return;
 
   const localDir = path.join(__dirname, "resources", "bin", platformArch);
+  const localPath = path.join(localDir, binaryName);
   fs.mkdirSync(localDir, { recursive: true });
-  fs.copyFileSync(vendorPath, path.join(localDir, binaryName));
-  fs.chmodSync(path.join(localDir, binaryName), 0o755);
-  console.log(`🔄 Synced codex binary: vendor → resources/bin/${platformArch}/${binaryName}`);
+  try {
+    fs.copyFileSync(vendorPath, localPath);
+    fs.chmodSync(localPath, 0o755);
+    console.log(`🔄 Synced codex binary: vendor → resources/bin/${platformArch}/${binaryName}`);
+  } catch (error) {
+    if (fs.existsSync(localPath)) {
+      console.warn(
+        `⚠️  Failed to sync codex binary from vendor (${error.code ?? "unknown"}); using existing resources/bin/${platformArch}/${binaryName}`,
+      );
+      return;
+    }
+    throw error;
+  }
 }
 
 // 获取 codex 二进制路径（resources/bin 为主，npm vendor 为回退）
